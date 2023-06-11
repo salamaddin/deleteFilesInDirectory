@@ -1,0 +1,62 @@
+const fs = require('fs/promises');
+const path = require('path');
+
+function deleteFilesInDirectory(directoryPath, fileExtension) {
+  readDirectory(directoryPath, fileExtension)
+    .catch(err => {
+      console.error('Error reading directory:', err);
+    });
+}
+
+function readDirectory(directoryPath, fileExtension) {
+  return fs.readdir(directoryPath)
+    .then(files => {
+      const promises = files.map(file => {
+        const filePath = path.join(directoryPath, file);
+        return processFile(filePath, fileExtension);
+      });
+      return Promise.all(promises);
+    })
+    .catch(err => {
+      console.error('Error reading directory:', err);
+    });
+}
+
+function processFile(filePath, fileExtension) {
+  return fs.stat(filePath)
+    .then(stats => {
+      if (stats.isDirectory()) {
+        return deleteFilesInDirectory(filePath, fileExtension);
+      } else {
+        return deleteFile(filePath, fileExtension);
+      }
+    })
+    .catch(err => {
+      console.error('Error getting file stats:', err);
+    });
+}
+
+function deleteFile(filePath, fileExtension) {
+  if (path.extname(filePath) === fileExtension) {
+    return fs.unlink(filePath)
+      .then(() => {
+        console.log('Deleted file:', filePath);
+      })
+      .catch(err => {
+        console.error('Error deleting file:', err);
+      });
+  } else {
+    return Promise.resolve();
+  }
+}
+
+// Get directory path and file extension from command-line arguments
+const directoryPath = process.argv[2];
+const fileExtension = process.argv[3];
+
+if (!directoryPath || !fileExtension) {
+  console.error('Please provide directory path and file extension.');
+  process.exit(1);
+}
+
+deleteFilesInDirectory(directoryPath, fileExtension);
